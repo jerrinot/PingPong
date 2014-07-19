@@ -33,6 +33,7 @@
                                     <mainClass>info.jerrinot.experiments.pingpong.Main</mainClass>
                                 </transformer>
                             </transformers>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                         </configuration>
                     </execution>
                 </executions>
