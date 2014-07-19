@@ -34,6 +34,7 @@ public class BlockingClient implements Client {
     private class MonitorThread extends Thread {
         @Override
         public void run() {
+            setDaemon(true);
             getCount();
             int sleepingTimeMs = Configuration.MONITORING_FREQ * 1000;
 
