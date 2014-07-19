@@ -1,7 +1,8 @@
 PingPong
 ========
 
-Network PingPong experiment.
+Network PingPong experiment. The server listens on TCP port and expects client to send 16 bytes. Then the server sends the bytes back to the client and expects another 16 bytes.
+
 
 Usage:
 
