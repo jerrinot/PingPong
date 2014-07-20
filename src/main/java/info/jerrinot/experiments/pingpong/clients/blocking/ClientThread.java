@@ -15,15 +15,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ClientThread implements Runnable {
     private static final Random rand = new Random();
 
-    private final byte[] writerBuffer = new byte[Configuration.WORD_SIZE];
-    private final byte[] readerBuffer = new byte[Configuration.WORD_SIZE];
+    private final byte[] requestBuffer = new byte[Configuration.WORD_SIZE];
+    private final byte[] responseBuffer = new byte[Configuration.WORD_SIZE];
 
     private final InetSocketAddress address;
     private final AtomicInteger opsCounter = new AtomicInteger();
 
     public ClientThread(InetSocketAddress address) {
         this.address = address;
-        rand.nextBytes(writerBuffer);
+        rand.nextBytes(requestBuffer);
     }
 
     public int getAndReset() {
@@ -41,10 +41,10 @@ public class ClientThread implements Runnable {
             inputStream = socket.getInputStream();
             outputStream = socket.getOutputStream();
 
-            startWritingData(outputStream);
+            startSendingRequests(outputStream);
 
             for (;;) {
-                readData(inputStream);
+                readResponse(inputStream);
                 opsCounter.incrementAndGet();
             }
         } catch (IOException e) {
@@ -54,13 +54,13 @@ public class ClientThread implements Runnable {
         }
     }
 
-    private void startWritingData(final OutputStream outputStream) throws IOException {
+    private void startSendingRequests(final OutputStream outputStream) throws IOException {
         new Thread() {
             @Override
             public void run() {
                 try {
                     for (;;) {
-                        outputStream.write(writerBuffer);
+                        outputStream.write(requestBuffer);
                     }
                 } catch (IOException e) {
                     Utils.rethrow(e);
@@ -69,11 +69,11 @@ public class ClientThread implements Runnable {
         }.start();
     }
 
-    private void readData(InputStream inputStream) throws IOException {
+    private void readResponse(InputStream inputStream) throws IOException {
         int pos = 0;
         int bufferSize = Configuration.WORD_SIZE;
         do {
-            int read = inputStream.read(readerBuffer, pos, bufferSize - pos);
+            int read = inputStream.read(responseBuffer, pos, bufferSize - pos);
             if (pos == -1) {
                 throw new PingPongException("Unexpected end of stream.");
             }
