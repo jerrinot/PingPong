@@ -15,17 +15,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ClientThread implements Runnable {
     private static final Random rand = new Random();
 
-    private final byte[] buffer = new byte[Configuration.WORD_SIZE];
+    private final byte[] writerBuffer = new byte[Configuration.WORD_SIZE];
+    private final byte[] readerBuffer = new byte[Configuration.WORD_SIZE];
+
     private final InetSocketAddress address;
-    private final AtomicInteger count = new AtomicInteger();
+    private final AtomicInteger opsCounter = new AtomicInteger();
 
     public ClientThread(InetSocketAddress address) {
         this.address = address;
-        rand.nextBytes(buffer);
+        rand.nextBytes(writerBuffer);
     }
 
     public int getAndReset() {
-        return count.getAndSet(0);
+        return opsCounter.getAndSet(0);
     }
 
     @Override
@@ -39,24 +41,43 @@ public class ClientThread implements Runnable {
             inputStream = socket.getInputStream();
             outputStream = socket.getOutputStream();
 
-            for (;;) {
-                outputStream.write(buffer);
+            startWritingData(outputStream);
 
-                int pos = 0;
-                int bufferSize = Configuration.WORD_SIZE;
-                do {
-                    int read = inputStream.read(buffer, pos, bufferSize - pos);
-                    if (pos == -1) {
-                        throw new PingPongException("Unexpected end of stream.");
-                    }
-                    pos += read;
-                } while (pos != bufferSize);
-                count.incrementAndGet();
+            for (;;) {
+                readData(inputStream);
+                opsCounter.incrementAndGet();
             }
         } catch (IOException e) {
             Utils.rethrow(e);
         } finally {
             Utils.close(inputStream, outputStream, socket);
         }
+    }
+
+    private void startWritingData(final OutputStream outputStream) throws IOException {
+        new Thread() {
+            @Override
+            public void run() {
+                try {
+                    for (;;) {
+                        outputStream.write(writerBuffer);
+                    }
+                } catch (IOException e) {
+                    Utils.rethrow(e);
+                }
+            }
+        }.start();
+    }
+
+    private void readData(InputStream inputStream) throws IOException {
+        int pos = 0;
+        int bufferSize = Configuration.WORD_SIZE;
+        do {
+            int read = inputStream.read(readerBuffer, pos, bufferSize - pos);
+            if (pos == -1) {
+                throw new PingPongException("Unexpected end of stream.");
+            }
+            pos += read;
+        } while (pos != bufferSize);
     }
 }
